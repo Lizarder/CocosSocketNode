@@ -73,7 +73,7 @@ void CustomDialog::onEnter()
 	{
 		getBackGroundSprite()->setPosition(pCenter);
 		this->addChild(getBackGroundSprite(), 0, "background");
-		dgContentSize = getBackGroundSprite()->getContentSize();
+		dgContentSize = getBackGroundSprite()->getTexture()->getContentSize();
 
 	}
 	else
@@ -88,17 +88,17 @@ void CustomDialog::onEnter()
 	this->addChild(getMenuButton());
 
 	/*添加按钮未实现*/
-
+	Vec2 bgCenter = Vec2(dgContentSize.width / 2, dgContentSize.height / 2);
 	if (getTitleLabel())//标题
 	{
-		getTitleLabel()->setPosition(pCenter + Vec2(0, dgContentSize.height - 10));
+		getTitleLabel()->setPosition(pCenter + Vec2(0, dgContentSize.height/2 - 10));
 		this->addChild(getTitleLabel());
 	}
 
 	if (getContentLabel())//标题
 	{
-		getContentLabel()->setPosition(pCenter + Vec2(0, dgContentSize.height - 60));
-		this->addChild(getTitleLabel());
+		getContentLabel()->setPosition(pCenter + Vec2(0, dgContentSize.height/2 - 60));
+		this->addChild(getContentLabel());
 	}
 
 	Action* popupAction = Sequence::create(ScaleTo::create(0.0, 0.0),

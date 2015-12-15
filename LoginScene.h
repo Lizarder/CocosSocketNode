@@ -9,6 +9,7 @@ public:
 	static cocos2d::Scene* createScene();
 	virtual bool init();
 	CREATE_FUNC(LoginScene);
+	void menuCallBack(cocos2d::Ref* pSender);
 };
 
 #endif

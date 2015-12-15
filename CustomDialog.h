@@ -16,8 +16,8 @@ public:
 	CREATE_FUNC(CustomDialog);
 
 	static CustomDialog* create(const char* backGroundImg);
-	void setTitle(const char* title, int fontsize = 30);
-	void setContent(const char* content, int fontsize = 30);
+	void setTitle(const char* title, int fontsize = 20);
+	void setContent(const char* content, int fontsize = 20);
 
 	virtual void onEnter();
 	virtual void onExit();

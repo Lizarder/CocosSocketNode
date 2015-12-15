@@ -24,11 +24,25 @@ bool LoginScene::init()
 		return false;
 	}
 
-	CustomDialog* customDialog = CustomDialog::create("DialogBG.png");
+	Menu* menu = Menu::create();
+	menu->setPosition(Vec2(0, 0));
+	this->addChild(menu);
+
+	MenuItemLabel* popupDialog = MenuItemLabel::create(Sprite::create("CloseNormal.png"),this,CC_MENU_SELECTOR(LoginScene::menuCallBack));
+	
+	popupDialog->setPosition(Vec2(50, 50));
+	menu->addChild(popupDialog);
+
+	setTouchEnabled(true);
+	return ret;
+}
+
+void LoginScene::menuCallBack(cocos2d::Ref* pSender)
+{
+	CustomDialog* customDialog = CustomDialog::create("dialog_scale.png");
+	customDialog->setContentSize(Size(200, 150));
 	customDialog->setTitle("DialogCustom");
 	customDialog->setContent("oh my god !");
 
 	this->addChild(customDialog);
-
-	return ret;
 }
