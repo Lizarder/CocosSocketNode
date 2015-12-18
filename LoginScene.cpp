@@ -1,6 +1,7 @@
 #include "cocos2d.h"
 #include "LoginScene.h"
 #include "CustomDialog.h"
+#include "TestNetwork.h"
 
 USING_NS_CC;
 
@@ -39,10 +40,11 @@ bool LoginScene::init()
 
 void LoginScene::menuCallBack(cocos2d::Ref* pSender)
 {
-	CustomDialog* customDialog = CustomDialog::create("dialog_scale.png");
-	customDialog->setContentSize(Size(200, 150));
-	customDialog->setTitle("DialogCustom");
-	customDialog->setContent("oh my god !");
+	//CustomDialog* customDialog = CustomDialog::create("dialog_scale.png");
+	//customDialog->setContentSize(Size(200, 150));
+	//customDialog->setTitle("DialogCustom");
+	//customDialog->setContent("oh my god !");
 
-	this->addChild(customDialog);
+	//this->addChild(customDialog);
+	Director::getInstance()->replaceScene(TestNetWork::createScene());
 }
