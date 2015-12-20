@@ -39,7 +39,7 @@ bool LoginScene::init()
 
 void LoginScene::menuCallBack(cocos2d::Ref* pSender)
 {
-	CustomDialog* customDialog = CustomDialog::create("dialog_scale.png");
+	CustomDialog* customDialog = CustomDialog::create("DialogBG.png");
 	customDialog->setContentSize(Size(200, 150));
 	customDialog->setTitle("DialogCustom");
 	customDialog->setContent("oh my god !");
