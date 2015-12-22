@@ -102,7 +102,7 @@ void CustomDialog::onEnter()
 	}
 
 	Action* popupAction = Sequence::create(ScaleTo::create(0.0, 0.0),
-		ScaleTo::create(0.06, 1.05), ScaleTo::create(0.08, 0.95), ScaleTo::create(0.08, 1.0), NULL);
+		ScaleTo::create(3, 1.05), ScaleTo::create(3, 0.85), ScaleTo::create(3, 1.0), NULL);
 	
 	this->runAction(popupAction);
 
