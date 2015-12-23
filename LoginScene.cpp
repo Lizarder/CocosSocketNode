@@ -2,6 +2,7 @@
 #include "LoginScene.h"
 #include "CustomDialog.h"
 #include "TestNetwork.h"
+#include "SocketNode.h"
 
 USING_NS_CC;
 
@@ -34,6 +35,7 @@ bool LoginScene::init()
 	popupDialog->setPosition(Vec2(50, 50));
 	menu->addChild(popupDialog);
 
+	SocketNode* socketNode = SocketNode::create("192.168.3.157", 60000, this);
 	setTouchEnabled(true);
 	return ret;
 }

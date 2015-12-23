@@ -19,6 +19,8 @@ public:
 
 	void stop();
 
+	void closeSocket();
+
 	virtual void update(float delta);
 };
 #endif
