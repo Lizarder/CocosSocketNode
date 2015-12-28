@@ -8,11 +8,11 @@ class SocketNode::Impl
 {
 public:
 	SocketNode* _socketNode;
-	SOCKET  _socketImpl;
+	SOCKET  _socketImpl ;
 	static const int STATUS_OK = 0;
 	static const int STATUS_STOPPED = 1;
 	static const int STATUS_FINISHED = 2;
-
+	enumSocketState _socketState;
 	bool stopCalled;
 	bool inDestructor;
 	Ref* pTarget;
@@ -25,7 +25,7 @@ public:
 		inDestructor = false;
 		pTarget = nullptr;
 		disconnectByClient = false;
-
+		_socketState = SocketState_NoConnect;
 #if CC_TARGET_PLATFORM==CC_PLATFORM_WIN32
 		static bool wsaStarted = false;
 		if (!wsaStarted)
@@ -45,16 +45,16 @@ public:
 
 	void start(const char* host, int port)
 	{
-		connectionThread(host, port);
+		_socketState = connectionThread(host, port);
 	}
-	void* connectionThread(const char* host, int port)
+	enumSocketState connectionThread(const char* host, int port)
 	{
 		struct sockaddr_in m_ServerAddr;
 		SOCKET _socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 		if (_socket == INVALID_SOCKET)
 		{
 			cocos2d::log("cocos2d debug--->:connect failed !");
-			return NULL;
+			return SocketState_NoConnect;
 		}
 		_socketImpl = _socket;
 		memset(&m_ServerAddr, 0, sizeof(m_ServerAddr));
@@ -75,7 +75,7 @@ public:
 		if (!dnsOk)
 		{
 			cocos2d::log("cocos2d debug--->:connect failed dns wrong!");
-			return NULL;
+			return SocketState_NoConnect;
 		}
 
 		int iErrorCode = 0;
@@ -83,11 +83,38 @@ public:
 		if (iErrorCode == SOCKET_ERROR)
 		{
 			cocos2d::log("cocos2d debug--->:connect failed !");
-			return NULL;
+			return SocketState_NoConnect;
 		}
 
 		cocos2d::log("cocos2d debug--->:connect successed !");
-		return NULL;
+		return SocketState_Connected;
+	}
+
+	bool sendData(const char* pData, int size)
+	{
+		if (_socketState == SocketState_NoConnect)
+		{
+			cocos2d::log("socketimpl is null!");
+			return false;
+		}
+			
+		assert(size <= SOCKET_PACKAGE);
+		if (size > SOCKET_PACKAGE)
+		{
+			cocos2d::log("cocos2d debug---->:size over socket package'size");
+			return false;
+		}
+
+		char packDataBuff[SOCKET_PACKAGE];
+		memcpy(packDataBuff, pData, size);
+
+		int sendErrorCode = send(_socketImpl, packDataBuff, size, 0);
+		if (sendErrorCode < 0)
+		{
+			return false;
+		}
+
+		return true;
 	}
 
 	static void closeSocket(SOCKET skt)
@@ -134,9 +161,9 @@ void SocketNode::stop()
 	//unimplemented
 }
 
-void SocketNode::sendData(const char* pData, int size)
+bool SocketNode::sendData(const char* pData, int size)
 {
-	//unimplemented
+	return impl->sendData(pData, size);
 }
 
 void SocketNode::update(float delta)

@@ -3,6 +3,16 @@
 
 #include "cocos2d.h"
 
+#define SOCKET_PACKAGE 2046
+
+enum enumSocketState
+{
+	SocketState_NoConnect,
+	SocketState_Connecting,
+	SocketState_Connected,
+	SocketState_DisConnected
+};
+
 class SocketNode : public cocos2d::Node{
 	class Impl;
 	friend class Impl;
@@ -15,7 +25,7 @@ public:
 	
 	static SocketNode* create(const char* addr, int port, cocos2d::Ref* pTarget);
 
-	void sendData(const char* pData,int size);
+	bool sendData(const char* pData,int size);
 
 	void stop();
 

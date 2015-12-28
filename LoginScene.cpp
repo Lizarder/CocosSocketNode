@@ -36,6 +36,14 @@ bool LoginScene::init()
 	menu->addChild(popupDialog);
 
 	SocketNode* socketNode = SocketNode::create("192.168.3.157", 60000, this);
+	this->addChild(socketNode,-10,"SocketNode");
+	char *content = "client 123456789";
+	bool sendRet = socketNode->sendData(content, strlen(content));
+	if (sendRet)
+	{
+		cocos2d::log("cocos2d debug--->:send data successful!");
+	}
+
 	setTouchEnabled(true);
 	return ret;
 }
