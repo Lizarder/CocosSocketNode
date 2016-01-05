@@ -22,7 +22,11 @@ class SocketNode : public cocos2d::Node{
 	~SocketNode();
 
 public:
-	
+	static const unsigned int NOTIFY_CONNECTED = 1;
+	static const unsigned int NOTIFY_CONNECT_FAILED = 2;
+	static const unsigned int NOTIFY_DISCONNECTED = 3;
+	static const unsigned int NOTIFY_PACKET = 4;
+
 	static SocketNode* create(const char* addr, int port, cocos2d::Ref* pTarget);
 
 	bool sendData(const char* pData,int size);
