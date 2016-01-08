@@ -227,6 +227,67 @@ public:
 			MUTEX_UNLOCK(wtd->mtx);
 			cocos2d::log("cocos2d debug--->:connect successed !");
 		}
+
+		std::vector<char> buff(1024 * 16);//recv缓冲
+		int recvSize = 0;//接收数据大小
+		while (true)
+		{
+			MUTEX_LOCK(rtd->mtx);
+			//如果status为STATUS_STOPPED，则删除数据退出
+			if (rtd->state == STATUS_STOPPED)
+			{
+				MUTEX_UNLOCK(rtd->mtx);
+				//
+				break;
+			}
+			else
+			{
+				MUTEX_UNLOCK(rtd->mtx);
+			}
+			//开始读取
+			int recvCode = recv(rtd->_socket, &buff[0] + recvSize, buff.size(), 0);
+			if (recvCode < 0)
+			{
+				//连接断开
+				closeSocket(rtd->_socket);
+				//尝试退出
+				MUTEX_LOCK(rtd->mtx);
+				if (rtd->state == STATUS_STOPPED)
+				{
+					// 如果status为STATUS_STOPPED，那么删除数据并退出。
+					MUTEX_UNLOCK(rtd->mtx);
+					// 跳出循环，以便删除数据并退出。
+					break;
+				}
+				else
+				{
+					rtd->state = STATUS_FINISHED;
+					rtd->notifies.push_back(Notify(SocketNode::NOTIFY_DISCONNECTED,"connect failed!"));
+					MUTEX_UNLOCK(rtd->mtx);
+					cocos2d::log("cocos2d debug:----------->connection thread out");
+					return NULL;
+				}
+
+			}
+
+			recvSize += recvCode;
+
+			char *readp = &buff[0];
+			while (true)
+			{
+				//
+				if (recvSize == 0)
+				{
+					break;
+				}
+
+				unsigned int packLen = 0;
+				
+				//投包
+				char *copiedData = (char*)malloc()
+			}
+		}
+	
 	}
 #if CC_TARGET_PLATFORM==CC_PLATFORM_WIN32
 	static DWORD WINAPI writeThread(LPVOID data)
@@ -400,12 +461,17 @@ bool SocketNode::sendData(const char* pData, int size)
 {
 	if (!impl->stopCalled)
 	{
-		char* copiedData = (char*)malloc(size);
+		char* copiedData = (char*)malloc(size+2);
+		unsigned short len = (unsigned short)size;
 		unsigned int dataLen = size;
-		memcpy(copiedData, pData, dataLen);
+		memcpy(copiedData + 1, ((char*)&len), 1);
+		memcpy(copiedData, ((char*)&len) + 1, 1);
+		memcpy(copiedData+2, pData, dataLen);
+		
 		MUTEX_LOCK(impl->wtd->mtx);
 		impl->wtd->packages.push_back(Impl::Notify(NOTIFY_PACKET, copiedData, dataLen));
 		MUTEX_UNLOCK(impl->wtd->mtx);
+		cocos2d::log("cocos2d debug------->:socketnode senddata");
 
 	}
 }
