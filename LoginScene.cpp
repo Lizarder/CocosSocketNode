@@ -35,14 +35,11 @@ bool LoginScene::init()
 	popupDialog->setPosition(Vec2(50, 50));
 	menu->addChild(popupDialog);
 
-	SocketNode* socketNode = SocketNode::create("192.168.3.157", 60000, this);
+	SocketNode* socketNode = SocketNode::create("192.168.3.157", 60000, this, static_cast<SocketNode::SEL_CallFuncUDU>(&LoginScene::onReceiveData));
 	this->addChild(socketNode,-10,"SocketNode");
+	
 	char *content = "client 123456789";
-	bool sendRet = socketNode->sendData(content, strlen(content));
-	if (sendRet)
-	{
-		cocos2d::log("cocos2d debug--->:send data successful!");
-	}
+	socketNode->sendData(content, strlen(content));
 
 	setTouchEnabled(true);
 	return ret;
@@ -57,4 +54,25 @@ void LoginScene::menuCallBack(cocos2d::Ref* pSender)
 
 	this->addChild(customDialog);*/
 	Director::getInstance()->replaceScene(TestNetWork::createScene());
+}
+
+void LoginScene::onReceiveData(unsigned int type, void* pData, unsigned int len)
+{
+	switch (type)
+	{
+	case SocketNode::NOTIFY_CONNECTED:
+		cocos2d::log("onReceiveData : notify_connect"); 
+		break;
+	case SocketNode::NOTIFY_CONNECT_FAILED:
+		cocos2d::log("onReceiveData : notify_connect_failed");
+		break;
+	case SocketNode::NOTIFY_DISCONNECTED:
+	{
+		cocos2d::log("onReceiveData : notify_disconnect");
+	}
+	break;
+	case SocketNode::NOTIFY_PACKET:
+		cocos2d::log("onReceiveData : notify_packet");
+		break;
+	}
 }

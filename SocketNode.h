@@ -27,9 +27,11 @@ public:
 	static const unsigned int NOTIFY_DISCONNECTED = 3;
 	static const unsigned int NOTIFY_PACKET = 4;
 
-	static SocketNode* create(const char* addr, int port, cocos2d::Ref* pTarget);
+	typedef void (cocos2d::Ref::*SEL_CallFuncUDU)(unsigned int, void*, unsigned int);
 
-	bool sendData(const char* pData,int size);
+	static SocketNode* create(const char* addr, int port, cocos2d::Ref* pTarget, SEL_CallFuncUDU selector);
+
+	void sendData(const char* pData,int size);
 
 	void stop();
 

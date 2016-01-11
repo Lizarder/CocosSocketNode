@@ -118,6 +118,7 @@ public:
 	~Impl()
 	{
 		inDestructor = true;
+		stop();
 		
 	}
 
@@ -276,17 +277,50 @@ public:
 			while (true)
 			{
 				//
-				if (recvSize == 0)
+				if (recvSize < 2)
 				{
 					break;
 				}
-
+				//获取包长度
 				unsigned int packLen = 0;
-				
-				//投包
-				char *copiedData = (char*)malloc()
+				memcpy(((char*)&packLen) + 1, readp, 1);
+				memcpy((char*)&packLen, readp + 1, 1);
+
+				if (recvSize < packLen + 2)
+				{
+					break;//包未读完
+				}
+				//投包到主线程
+				char *copiedData = (char*)malloc(packLen);
+				memcpy(copiedData, readp + 2, packLen);
+				MUTEX_LOCK(rtd->mtx);
+				rtd->notifies.push_back(Notify(SocketNode::NOTIFY_PACKET, copiedData, packLen));
+				MUTEX_UNLOCK(rtd->mtx);
+				//指向下一个包
+				readp = readp + 2 + packLen;
+				recvSize = recvSize - 2 - packLen;
 			}
+
+			if (readp != &buff[0])
+			{
+				memmove(&buff[0], readp, recvSize);
+			}
+
 		}
+		while (!rtd->notifies.empty())
+		{
+			Notify& notify = rtd->notifies.front();
+			if (notify.data)
+			{
+				free(notify.data);
+				notify.data = NULL;
+			}
+			rtd->notifies.pop_front();
+		}
+		delete rtd;
+		rtd = NULL;
+		cocos2d::log("cocos2d debug----------------->:connect thread out!\n");
+		return NULL;
 	
 	}
 #if CC_TARGET_PLATFORM==CC_PLATFORM_WIN32
@@ -424,6 +458,106 @@ public:
 #endif
 		cocos2d::log("cocos2d debug--->:close connection  !");
 	}
+
+	void stop()
+	{
+		if (!stopCalled)
+		{
+			stopCalled = true;
+
+			_socketNode->unscheduleUpdate();
+			//停止读线程
+			MUTEX_LOCK(rtd->mtx);
+			if (rtd->state == STATUS_FINISHED)
+			{
+				MUTEX_UNLOCK(rtd->mtx);
+				while (!rtd->notifies.empty())
+				{
+					Notify& notify = rtd->notifies.front();
+					if (notify.data)
+					{
+						free(notify.data);
+						notify.data = NULL;
+					}
+					rtd->notifies.pop_front();
+				}
+				
+				delete rtd;
+				rtd = NULL;
+			}
+			else
+			{
+				//状态设为stoped
+				rtd->state = STATUS_STOPPED;
+				MUTEX_UNLOCK(rtd->mtx);
+			}
+			//停止写线程
+			MUTEX_LOCK(wtd->mtx);
+			if (wtd->state == STATUS_FINISHED)
+			{
+				MUTEX_UNLOCK(wtd->mtx);
+				while (!wtd->packages.empty())
+				{
+					Notify& packet = wtd->packages.front();
+					if (packet.data)
+					{
+						free(packet.data);
+						packet.data = NULL;
+					}
+					wtd->packages.pop_front();
+				}
+
+				delete wtd;
+				wtd = NULL;
+			}
+			else
+			{
+				rtd->state = STATUS_STOPPED;
+				MUTEX_UNLOCK(wtd->mtx);
+			}
+
+			//没析构，则从父节点删除socketnode
+			if (!inDestructor)
+			{
+				_socketNode->removeFromParentAndCleanup(true);
+			}
+		}
+	}
+
+	void onCheckNotifies(float dt)
+	{
+		bool isFinished = false;
+		
+		std::deque<Notify> tempNotifies;
+		MUTEX_LOCK(rtd->mtx);
+		isFinished = (rtd->state == STATUS_STOPPED);
+		tempNotifies = rtd->notifies;
+		rtd->notifies.clear();
+		MUTEX_UNLOCK(rtd->mtx);
+
+		while (!tempNotifies.empty())
+		{
+			Notify& notify = tempNotifies.front();
+
+			if (pTarget&&callfunc)
+			{
+				(pTarget->*callfunc)(notify.type, notify.data, notify.len);
+			}
+
+			if (notify.data)
+			{
+				free(notify.data);
+				notify.data = NULL;
+			}
+			tempNotifies.pop_front();
+		}
+
+		if (isFinished)
+		{
+			stop();
+		}
+		
+	}
 };
 
 
@@ -434,7 +568,6 @@ SocketNode::SocketNode()
 
 SocketNode::~SocketNode()
 {
-	closeSocket();
 	if (impl)
 	{
 		delete impl;
@@ -442,22 +575,23 @@ SocketNode::~SocketNode()
 	}
 }
 
-SocketNode* SocketNode::create(const char* addr, int port, cocos2d::Ref* pTarget)
+SocketNode* SocketNode::create(const char* addr, int port, cocos2d::Ref* pTarget, SEL_CallFuncUDU selector)
 {
 	SocketNode* _instance = new SocketNode();
 	_instance->init();
 	_instance->autorelease();
 	_instance->impl->pTarget = pTarget;
+	_instance->impl->callfunc = selector;
 	_instance->impl->start(addr, port);
 	return _instance;
 }
 
 void SocketNode::stop()
 {
-	//unimplemented
+	impl->stop();
 }
 
-bool SocketNode::sendData(const char* pData, int size)
+void SocketNode::sendData(const char* pData, int size)
 {
 	if (!impl->stopCalled)
 	{
@@ -478,10 +612,5 @@ bool SocketNode::sendData(const char* pData, int size)
 
 void SocketNode::update(float delta)
 {
-	//unimplemented
-}
-
-void SocketNode::closeSocket()
-{
-	this->impl->closeSocket(this->impl->_socketImpl);
+	impl->onCheckNotifies(delta);
 }
