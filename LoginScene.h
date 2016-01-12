@@ -2,6 +2,7 @@
 #define _LOGIN_SCENE_H_
 
 #include "cocos2d.h"
+#include "SocketNode.h"
 
 class LoginScene : public cocos2d::Layer{
 public:
@@ -10,6 +11,8 @@ public:
 	CREATE_FUNC(LoginScene);
 	void menuCallBack(cocos2d::Ref* pSender);
 	void onReceiveData(unsigned int type, void* pData, unsigned int len);
+private:
+	SocketNode *socketNode;
 };
 
 #endif

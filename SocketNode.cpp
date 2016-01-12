@@ -87,7 +87,6 @@ public:
 	ReadThreadData* rtd;  // 读线程
 	WriteThreadData* wtd; //写线程
 
-	enumSocketState _socketState;
 	bool stopCalled;
 	bool inDestructor;
 	bool disconnectByClient;
@@ -97,13 +96,13 @@ public:
 	Impl(SocketNode* _this)
 	{
 		this->_socketNode = _this;
-		rtd = nullptr;
-		wtd = nullptr;
+		rtd = NULL;
+		wtd = NULL;
 		stopCalled = false;
 		inDestructor = false;
-		pTarget = nullptr;
+		pTarget = NULL;
+		callfunc = NULL;
 		disconnectByClient = false;
-		_socketState = SocketState_NoConnect;
 #if CC_TARGET_PLATFORM==CC_PLATFORM_WIN32
 		static bool wsaStarted = false;
 		if (!wsaStarted)
@@ -128,6 +127,7 @@ public:
 		MUTEX_INIT(wtd->mtx);
 		wtd->state = STATUS_OK;
 		wtd->_socket = INVALID_SOCKET;
+		//启动写线程
 		{
 #if CC_TARGET_PLATFORM==CC_PLATFORM_WIN32
 			DWORD tid = 0;
@@ -145,6 +145,7 @@ public:
 		rtd->state = STATUS_OK;
 		MUTEX_INIT(rtd->mtx);
 		rtd->_socket = INVALID_SOCKET;
+		////启动读线程
 		{
 #if CC_TARGET_PLATFORM==CC_PLATFORM_WIN32
 			DWORD tid = 0;
@@ -156,6 +157,34 @@ public:
 #endif
 		}
 		_socketNode->scheduleUpdate();
+	}
+
+	static char* mallocStrS(const char* fmtstr, const char* s)
+	{
+		char* result = (char*)malloc(strlen(fmtstr) + strlen(s) + 1);
+		sprintf(result, fmtstr, s);
+		return result;
+		}
+
+	static char* mallocStrI(const char* fmtstr, int i)
+	{
+		char* result = (char*)malloc(strlen(fmtstr) + 12 + 1);
+		sprintf(result, fmtstr, i);
+		return result;
+	}
+
+	static char* mallocStrISS(const char* fmtstr, int i1, const char* s1, const char* s2)
+	{
+		char* result = (char*)malloc(strlen(fmtstr) + 10 + strlen(s1) + strlen(s2) + 1);
+		sprintf(result, fmtstr, i1, s1, s2);
+		return result;
+	}
+
+	static char* mallocStrSSS(const char* fmtstr, const char* s1, const char* s2, const char* s)
+	{
+		char* result = (char*)malloc(strlen(fmtstr) + strlen(s1) + strlen(s2) + strlen(s) + 1);
+		sprintf(result, fmtstr, s1, s2, s);
+		return result;
 	}
 #if CC_TARGET_PLATFORM==CC_PLATFORM_WIN32
 	static DWORD WINAPI connectionThread(LPVOID data)
@@ -178,7 +207,7 @@ public:
 			if (_socket == INVALID_SOCKET)
 			{
 				MUTEX_LOCK(rtd->mtx);
-				rtd->notifies.push_back(Notify(SocketNode::NOTIFY_CONNECT_FAILED, "connect failed!"));
+				rtd->notifies.push_back(Notify(SocketNode::NOTIFY_CONNECT_FAILED, mallocStrS("connect failed %s",host.c_str())));
 				rtd->state = STATUS_FINISHED;
 				MUTEX_UNLOCK(rtd->mtx);
 				cocos2d::log("cocos2d debug--->:connect failed !");
@@ -204,7 +233,7 @@ public:
 			if (!dnsOk)
 			{
 				cocos2d::log("cocos2d debug--->:connect failed dns wrong!");
-				return SocketState_NoConnect;
+				return NULL;
 			}
 
 			int iErrorCode = 0;
@@ -212,7 +241,7 @@ public:
 			if (iErrorCode == SOCKET_ERROR)
 			{
 				MUTEX_LOCK(rtd->mtx);
-				rtd->notifies.push_back(Notify(SocketNode::NOTIFY_CONNECT_FAILED, "connect failed!"));
+				rtd->notifies.push_back(Notify(SocketNode::NOTIFY_CONNECT_FAILED, mallocStrS("connect failed %s", host.c_str())));
 				rtd->state = STATUS_FINISHED;
 				MUTEX_UNLOCK(rtd->mtx);
 				cocos2d::log("cocos2d debug--->:connect failed !");
@@ -220,7 +249,8 @@ public:
 			}
 
 			MUTEX_LOCK(rtd->mtx);
-			rtd->notifies.push_back(Notify(SocketNode::NOTIFY_CONNECTED, "connect successful"));
+			rtd->_socket = _socket;
+			rtd->notifies.push_back(Notify(SocketNode::NOTIFY_CONNECTED, mallocStrS("connect successful %s", host.c_str())));
 			WriteThreadData* wtd = rtd->wtd;
 			MUTEX_UNLOCK(rtd->mtx);
 			MUTEX_LOCK(wtd->mtx);
@@ -247,10 +277,12 @@ public:
 			}
 			//开始读取
 			int recvCode = recv(rtd->_socket, &buff[0] + recvSize, buff.size(), 0);
+			cocos2d::log("cocos2d debug recvdata: %d",recvCode);
 			if (recvCode < 0)
 			{
 				//连接断开
 				closeSocket(rtd->_socket);
+				cocos2d::log("read thread close socket");
 				//尝试退出
 				MUTEX_LOCK(rtd->mtx);
 				if (rtd->state == STATUS_STOPPED)
@@ -263,7 +295,7 @@ public:
 				else
 				{
 					rtd->state = STATUS_FINISHED;
-					rtd->notifies.push_back(Notify(SocketNode::NOTIFY_DISCONNECTED,"connect failed!"));
+					rtd->notifies.push_back(Notify(SocketNode::NOTIFY_DISCONNECTED, mallocStrS("disconnect  %s", host.c_str())));
 					MUTEX_UNLOCK(rtd->mtx);
 					cocos2d::log("cocos2d debug:----------->connection thread out");
 					return NULL;
@@ -293,6 +325,9 @@ public:
 				//投包到主线程
 				char *copiedData = (char*)malloc(packLen);
 				memcpy(copiedData, readp + 2, packLen);
+
+				cocos2d::log("cocos2d debug recvdata: %s", copiedData);
+
 				MUTEX_LOCK(rtd->mtx);
 				rtd->notifies.push_back(Notify(SocketNode::NOTIFY_PACKET, copiedData, packLen));
 				MUTEX_UNLOCK(rtd->mtx);
@@ -364,6 +399,8 @@ public:
 					{
 						int sentSize = 0;
 						int err = 0;
+						cocos2d::log("cocos2d debug socket senddata");
+						cocos2d::log((char*)packet.data);
 						while (true)
 						{
 							err = send(wtd->_socket, ((char*)packet.data) + sentSize, packet.len - sentSize, 0);
@@ -395,6 +432,7 @@ public:
 							}
 
 							closeSocket(wtd->_socket);
+							cocos2d::log("write thread close socket");
 
 							MUTEX_LOCK(wtd->mtx);
 							if (wtd->state == STATUS_STOPPED)
@@ -512,7 +550,7 @@ public:
 			}
 			else
 			{
-				rtd->state = STATUS_STOPPED;
+				wtd->state = STATUS_STOPPED;
 				MUTEX_UNLOCK(wtd->mtx);
 			}
 
@@ -530,13 +568,14 @@ public:
 		
 		std::deque<Notify> tempNotifies;
 		MUTEX_LOCK(rtd->mtx);
-		isFinished = (rtd->state == STATUS_STOPPED);
+		isFinished = (rtd->state == STATUS_FINISHED);
 		tempNotifies = rtd->notifies;
 		rtd->notifies.clear();
 		MUTEX_UNLOCK(rtd->mtx);
 
 		while (!tempNotifies.empty())
 		{
+			
 			Notify& notify = tempNotifies.front();
 
 			if (pTarget&&callfunc)
@@ -595,13 +634,16 @@ void SocketNode::sendData(const char* pData, int size)
 {
 	if (!impl->stopCalled)
 	{
-		char* copiedData = (char*)malloc(size+2);
+		//char* copiedData = (char*)malloc(size+2);
+		char* copiedData = (char*)malloc(size);
 		unsigned short len = (unsigned short)size;
 		unsigned int dataLen = size;
-		memcpy(copiedData + 1, ((char*)&len), 1);
-		memcpy(copiedData, ((char*)&len) + 1, 1);
-		memcpy(copiedData+2, pData, dataLen);
-		
+		//memcpy(copiedData + 1, ((char*)&len), 1);
+		//memcpy(copiedData, ((char*)&len) + 1, 1);
+		//memcpy(copiedData+2, pData, dataLen);
+		memcpy(copiedData , pData, dataLen);
+		cocos2d::log(copiedData+2);
+		cocos2d::log(pData);
 		MUTEX_LOCK(impl->wtd->mtx);
 		impl->wtd->packages.push_back(Impl::Notify(NOTIFY_PACKET, copiedData, dataLen));
 		MUTEX_UNLOCK(impl->wtd->mtx);
