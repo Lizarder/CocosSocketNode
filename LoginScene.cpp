@@ -3,6 +3,7 @@
 #include "CustomDialog.h"
 #include "TestNetwork.h"
 #include "SocketNode.h"
+#include "PopUpView.h"
 
 USING_NS_CC;
 
@@ -25,25 +26,27 @@ bool LoginScene::init()
 	{
 		return false;
 	}
+	Size visibleSize = Director::getInstance()->getVisibleSize();
+	float screenW = visibleSize.width;
+	float screenH = visibleSize.height;
 
 	Menu* menu = Menu::create();
 	menu->setPosition(Vec2(0, 0));
 	this->addChild(menu);
 
-	MenuItemLabel* popupDialog = MenuItemLabel::create(Sprite::create("CloseNormal.png"),this,CC_MENU_SELECTOR(LoginScene::menuCallBack));
-	
-	popupDialog->setPosition(Vec2(50, 50));
-	menu->addChild(popupDialog);
+	MenuItemLabel* loginButton = MenuItemLabel::create(Sprite::create("CloseNormal.png"), this, CC_MENU_SELECTOR(LoginScene::loginCallBack));
+	MenuItemLabel* popView = MenuItemLabel::create(Sprite::create("CloseSelected.png"), this, CC_MENU_SELECTOR(LoginScene::popViewCallBack));
 
-	socketNode = SocketNode::create("192.168.3.157", 60000, this, static_cast<SocketNode::SEL_CallFuncUDU>(&LoginScene::onReceiveData));
-	this->addChild(socketNode,-10,"SocketNode");
+	loginButton->setPosition(Vec2(screenW/5, screenH/3));
+	popView->setPosition(Vec2(screenW / 5+60, screenH / 3));
+	menu->addChild(loginButton);
+	menu->addChild(popView);
 	
-
 	setTouchEnabled(true);
 	return ret;
 }
 
-void LoginScene::menuCallBack(cocos2d::Ref* pSender)
+void LoginScene::loginCallBack(cocos2d::Ref* pSender)
 {
 	/*CustomDialog* customDialog = CustomDialog::create("DialogBG.png");
 	customDialog->setContentSize(Size(200, 150));
@@ -52,10 +55,16 @@ void LoginScene::menuCallBack(cocos2d::Ref* pSender)
 
 	this->addChild(customDialog);*/
 	//Director::getInstance()->replaceScene(TestNetWork::createScene());
-	char *content = "client 123456789";
-	socketNode->sendData(content, strlen(content)+1);
+	socketNode = SocketNode::create("192.168.3.157", 12345, this, static_cast<SocketNode::SEL_CallFuncUDU>(&LoginScene::onReceiveData));
+	this->addChild(socketNode, -10, "SocketNode");
 }
 
+void LoginScene::popViewCallBack(cocos2d::Ref* pSender)
+{
+	auto popUpView = PopUpVew::create("dialog_scale.png");
+	popUpView->setPosition(Vec2::ZERO);
+	this->addChild(popUpView);
+}
 void LoginScene::onReceiveData(unsigned int type, void* pData, unsigned int len)
 {
 	switch (type)
