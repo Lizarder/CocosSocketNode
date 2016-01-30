@@ -35,7 +35,7 @@ bool LoginScene::init()
 	popupDialog->setPosition(Vec2(50, 50));
 	menu->addChild(popupDialog);
 
-	socketNode = SocketNode::create("192.168.3.157", 60000, this, static_cast<SocketNode::SEL_CallFuncUDU>(&LoginScene::onReceiveData));
+	socketNode = SocketNode::create("192.168.102.129", 4530, this, static_cast<SocketNode::SEL_CallFuncUDU>(&LoginScene::onReceiveData));
 	this->addChild(socketNode,-10,"SocketNode");
 	
 
@@ -52,7 +52,7 @@ void LoginScene::menuCallBack(cocos2d::Ref* pSender)
 
 	this->addChild(customDialog);*/
 	//Director::getInstance()->replaceScene(TestNetWork::createScene());
-	char *content = "client 123456789";
+	char *content = "client 15361288428";
 	socketNode->sendData(content, strlen(content)+1);
 }
 
